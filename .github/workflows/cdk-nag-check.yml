@@ -25,44 +25,71 @@ jobs:
         run: npm ci
 
       - name: Run CDK Synth with Nag
-        run: npx cdk synth
+        id: cdk-synth
+        run: |
+          set +e  # エラー時に中断しない
+          npx cdk synth
+          SYNTH_EXIT_CODE=$?
+          echo "exit_code=$SYNTH_EXIT_CODE" >> $GITHUB_OUTPUT
+          exit 0  # 常に0を返す
+
+      - name: Create PR Comment for CDK Synth Error
+        if: steps.cdk-synth.outputs.exit_code != '0'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const commentBody = `### :warning: CDK Synth Encountered Errors
+
+            The CDK synthesis process found the following issues:
+
+            \`\`\`
+            ${{ steps.cdk-synth.outputs.stderr }}
+            \`\`\`
+
+            Please review and address these errors in your CDK stack definition.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
 
       - name: Parse Nag Report
         id: parse-nag-report
         run: |
-            # CSVファイルを見つけて解析
-            NAG_CSV=$(find cdk.out -name "*NagReport.csv" | head -n 1)
+          # CSVファイルを見つけて解析
+          NAG_CSV=$(find cdk.out -name "*NagReport.csv" | head -n 1)
 
-            # CSVファイルが見つからない場合のエラーハンドリング
-            if [ -z "$NAG_CSV" ]; then
+          # CSVファイルが見つからない場合のエラーハンドリング
+          if [ -z "$NAG_CSV" ]; then
             echo "No CDK Nag report CSV found"
             echo "no_issues=true" >> $GITHUB_OUTPUT
             exit 0
-            fi
+          fi
 
-            # ファイルの存在と読み取り権限を確認
-            if [ ! -r "$NAG_CSV" ]; then
+          # ファイルの存在と読み取り権限を確認
+          if [ ! -r "$NAG_CSV" ]; then
             echo "Cannot read CDK Nag report CSV"
             echo "no_issues=true" >> $GITHUB_OUTPUT
             exit 0
-            fi
+          fi
 
-            # NotCompliantな行を抽出（ヘッダーを除外）
-            NOT_COMPLIANT_ISSUES=$(grep -v "Compliant" "$NAG_CSV" | grep -v "Suppressed" | grep -v "^Rule ID,Resource ID" || true)
+          # NotCompliantな行を抽出（ヘッダーを除外）
+          NOT_COMPLIANT_ISSUES=$(grep -v "Compliant" "$NAG_CSV" | grep -v "Suppressed" | grep -v "^Rule ID,Resource ID" || true)
 
-            # 非準拠の項目がない場合の処理
-            if [ -z "$NOT_COMPLIANT_ISSUES" ]; then
+          # 非準拠の項目がない場合の処理
+          if [ -z "$NOT_COMPLIANT_ISSUES" ]; then
             echo "No non-compliant issues found"
             echo "no_issues=true" >> $GITHUB_OUTPUT
-            else
+          else
             # GitHub Actions の改行エスケープ処理
             NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//'%'/'%25'}"
             NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//$'\n'/'%0A'}"
             NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//$'\r'/'%0D'}"
 
             echo "issues=$NOT_COMPLIANT_ISSUES" >> $GITHUB_OUTPUT
-            fi
-        shell: bash
+          fi
 
       - name: Create PR Comment for Non-Compliant Issues
         if: steps.parse-nag-report.outputs.issues != ''
