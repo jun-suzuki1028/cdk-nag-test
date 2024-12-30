@@ -10,15 +10,15 @@ export class CdkNagTestStack extends cdk.Stack {
       enforceSSL: true,
     });
 
-    const vpc = new ec2.Vpc(this, "Vpc", {
-      maxAzs: 2,
-    });
+    // const vpc = new ec2.Vpc(this, "Vpc", {
+    //   maxAzs: 2,
+    // });
 
-    const networkAcl = new ec2.NetworkAcl(this, "NetworkAcl", {
-      vpc,
-      subnetSelection: {
-        subnetType: ec2.SubnetType.PUBLIC,
-      },
-    });
+    // const networkAcl = new ec2.NetworkAcl(this, "NetworkAcl", {
+    //   vpc,
+    //   subnetSelection: {
+    //     subnetType: ec2.SubnetType.PUBLIC,
+    //   },
+    // });
   }
 }

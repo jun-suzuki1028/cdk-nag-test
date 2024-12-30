@@ -48,7 +48,7 @@ jobs:
 
             let commentBody;
             if (errorMatches) {
-              commentBody = `### 🚫 セキュリティチェック結果：対応が必要な問題があります
+              commentBody = `### 🚫 cdk-nag セキュリティチェック結果：対応が必要な問題があります
 
               以下の項目について修正が必要です：
 
@@ -58,9 +58,9 @@ jobs:
             }
 
             if (warningMatches) {
-              const warningSection = `### ⚠️ セキュリティチェック結果：確認推奨事項
+              const warningSection = `### ⚠️ cdk-nag セキュリティチェック結果：確認推奨事項
 
-              以下の項目について、確認をお願いします：
+              以下の項目について、確認してください：
 
               ${warningMatches.map(warning => `- ${warning}`).join('\n')}
 
@@ -73,7 +73,7 @@ jobs:
             }
 
             if (!errorMatches && !warningMatches) {
-              commentBody = `### ✅ セキュリティチェック結果：問題なし
+              commentBody = `### ✅ cdk-nag セキュリティチェック結果：問題なし
 
               セキュリティチェックが完了し、問題は検出されませんでした。`;
             }
