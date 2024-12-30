@@ -24,10 +24,14 @@ jobs:
     - name: Run tests
       id: run-tests
       continue-on-error: true
-      run: npm test
+      run: |
+        npm test 2>&1 | tee test-output.log
+        exit_code=${PIPESTATUS[0]}
+        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+        exit $exit_code
 
     - name: Create GitHub Comment on Test Failure
-      if: steps.run-tests.outcome == 'failure'
+      if: steps.run-tests.outputs.exit_code != 0
       uses: actions/github-script@v6
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
@@ -35,7 +39,7 @@ jobs:
           const fs = require('fs');
 
           // テスト出力を読み取る
-          const testOutput = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
+          const testOutput = fs.readFileSync('test-output.log', 'utf8');
 
           // エラーメッセージを抽出
           const errorMatches = testOutput.match(/\[error at .+?\] .+?(?=\n|$)/g);
@@ -58,5 +62,5 @@ jobs:
           }
 
     - name: Fail if tests failed
-      if: steps.run-tests.outcome == 'failure'
+      if: steps.run-tests.outputs.exit_code != 0
       run: exit 1
