@@ -34,7 +34,7 @@ jobs:
           NAG_CSV=$(find cdk.out -name "*NagReport.csv")
 
           # NotCompliantな行を抽出
-          NOT_COMPLIANT_ISSUES=$(grep -v "Compliant" "$NAG_CSV" | grep -v "Suppressed")
+          NOT_COMPLIANT_ISSUES=$(grep -v "Compliant" "$NAG_CSV" | grep -v "Suppressed" | grep -v "Rule ID,Resource ID")
 
           # GitHub Actions の改行エスケープ処理
           NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//'%'/'%25'}"
@@ -43,15 +43,19 @@ jobs:
 
           echo "issues=$NOT_COMPLIANT_ISSUES" >> $GITHUB_OUTPUT
 
-      - name: Create PR Comment
+          # 非準拠の項目がない場合は空文字を設定
+          if [ -z "$NOT_COMPLIANT_ISSUES" ]; then
+            echo "no_issues=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR Comment for Non-Compliant Issues
         if: steps.parse-nag-report.outputs.issues != ''
         uses: actions/github-script@v6
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const issues = `${{ steps.parse-nag-report.outputs.issues }}`;
 
-            const commentBody = `### :warning: CDK Nag Compliance Issues Detected test
+            const commentBody = `### :warning: CDK Nag Compliance Issues Detected
 
             The following CDK Nag compliance issues were found:
 
@@ -60,6 +64,24 @@ jobs:
             \`\`\`
 
             Please review and address these non-compliant resources to improve security and best practices.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+      - name: Create PR Comment for Successful Compliance
+        if: steps.parse-nag-report.outputs.no_issues == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const commentBody = `### :white_check_mark: CDK Nag Compliance Check Passed
+
+            No non-compliant resources were found.
+
+            All resources meet the CDK Nag compliance standards. Great job! :tada:`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
