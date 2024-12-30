@@ -1,7 +1,7 @@
 name: CDK Nag Test
 
 on:
-  push:
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
@@ -22,5 +22,41 @@ jobs:
       run: npm ci
 
     - name: Run tests
+      id: run-tests
+      continue-on-error: true
       run: npm test
 
+    - name: Create GitHub Comment on Test Failure
+      if: steps.run-tests.outcome == 'failure'
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const fs = require('fs');
+
+          // テスト出力を読み取る
+          const testOutput = fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8');
+
+          // エラーメッセージを抽出
+          const errorMatches = testOutput.match(/\[error at .+?\] .+?(?=\n|$)/g);
+
+          if (errorMatches) {
+            const commentBody = `### CDK Nag Test Failures
+
+            The CDK Nag test has identified the following issues that need to be addressed:
+
+            ${errorMatches.map(error => `- ${error}`).join('\n')}
+
+            Please review and update your infrastructure code to resolve these security and best practice warnings.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+          }
+
+    - name: Fail if tests failed
+      if: steps.run-tests.outcome == 'failure'
+      run: exit 1
