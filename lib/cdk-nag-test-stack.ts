@@ -21,15 +21,15 @@ export class CdkNagTestStack extends cdk.Stack {
         subnetType: ec2.SubnetType.PUBLIC,
       },
     });
-    NagSuppressions.addResourceSuppressions(
-      vpc,
-      [
-        {
-          id: "AwsSolutions-VPC7",
-          reason: "This is a test",
-        },
-      ],
-      true,
-    );
+    // NagSuppressions.addResourceSuppressions(
+    //   vpc,
+    //   [
+    //     {
+    //       id: "AwsSolutions-VPC7",
+    //       reason: "This is a test",
+    //     },
+    //   ],
+    //   true,
+    // );
   }
 }
