@@ -15,21 +15,21 @@ export class CdkNagTestStack extends cdk.Stack {
       maxAzs: 2,
     });
 
-    const networkAcl = new ec2.NetworkAcl(this, "NetworkAcl", {
-      vpc,
-      subnetSelection: {
-        subnetType: ec2.SubnetType.PUBLIC,
-      },
-    });
-    // NagSuppressions.addResourceSuppressions(
+    // const networkAcl = new ec2.NetworkAcl(this, "NetworkAcl", {
     //   vpc,
-    //   [
-    //     {
-    //       id: "AwsSolutions-VPC7",
-    //       reason: "This is a test",
-    //     },
-    //   ],
-    //   true,
-    // );
+    //   subnetSelection: {
+    //     subnetType: ec2.SubnetType.PUBLIC,
+    //   },
+    // });
+    NagSuppressions.addResourceSuppressions(
+      vpc,
+      [
+        {
+          id: "AwsSolutions-VPC7",
+          reason: "This is a test",
+        },
+      ],
+      true,
+    );
   }
 }
