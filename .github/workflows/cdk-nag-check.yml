@@ -30,23 +30,39 @@ jobs:
       - name: Parse Nag Report
         id: parse-nag-report
         run: |
-          # CSVファイルを見つけて解析
-          NAG_CSV=$(find cdk.out -name "*NagReport.csv")
+            # CSVファイルを見つけて解析
+            NAG_CSV=$(find cdk.out -name "*NagReport.csv" | head -n 1)
 
-          # NotCompliantな行を抽出
-          NOT_COMPLIANT_ISSUES=$(grep -v "Compliant" "$NAG_CSV" | grep -v "Suppressed" | grep -v "Rule ID,Resource ID")
-
-          # GitHub Actions の改行エスケープ処理
-          NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//'%'/'%25'}"
-          NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//$'\n'/'%0A'}"
-          NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//$'\r'/'%0D'}"
-
-          echo "issues=$NOT_COMPLIANT_ISSUES" >> $GITHUB_OUTPUT
-
-          # 非準拠の項目がない場合は空文字を設定
-          if [ -z "$NOT_COMPLIANT_ISSUES" ]; then
+            # CSVファイルが見つからない場合のエラーハンドリング
+            if [ -z "$NAG_CSV" ]; then
+            echo "No CDK Nag report CSV found"
             echo "no_issues=true" >> $GITHUB_OUTPUT
-          fi
+            exit 0
+            fi
+
+            # ファイルの存在と読み取り権限を確認
+            if [ ! -r "$NAG_CSV" ]; then
+            echo "Cannot read CDK Nag report CSV"
+            echo "no_issues=true" >> $GITHUB_OUTPUT
+            exit 0
+            fi
+
+            # NotCompliantな行を抽出（ヘッダーを除外）
+            NOT_COMPLIANT_ISSUES=$(grep -v "Compliant" "$NAG_CSV" | grep -v "Suppressed" | grep -v "^Rule ID,Resource ID" || true)
+
+            # 非準拠の項目がない場合の処理
+            if [ -z "$NOT_COMPLIANT_ISSUES" ]; then
+            echo "No non-compliant issues found"
+            echo "no_issues=true" >> $GITHUB_OUTPUT
+            else
+            # GitHub Actions の改行エスケープ処理
+            NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//'%'/'%25'}"
+            NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//$'\n'/'%0A'}"
+            NOT_COMPLIANT_ISSUES="${NOT_COMPLIANT_ISSUES//$'\r'/'%0D'}"
+
+            echo "issues=$NOT_COMPLIANT_ISSUES" >> $GITHUB_OUTPUT
+            fi
+        shell: bash
 
       - name: Create PR Comment for Non-Compliant Issues
         if: steps.parse-nag-report.outputs.issues != ''
