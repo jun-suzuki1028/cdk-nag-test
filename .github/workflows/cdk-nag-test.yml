@@ -42,34 +42,30 @@ jobs:
           script: |
             const fs = require('fs');
 
-            // テスト出力を読み取る
             const testOutput = fs.readFileSync('test-output.log', 'utf8');
-
-            // エラーメッセージを抽出
             const errorMatches = testOutput.match(/\[error at .+?\] .+?(?=\n|$)/g);
-
-            // 警告メッセージを抽出
             const warningMatches = testOutput.match(/\[warning at .+?\] .+?(?=\n|$)/g);
 
             let commentBody;
             if (errorMatches) {
-              commentBody = `### cdk-nag テスト失敗 ❌
+              commentBody = `### 🚫 セキュリティチェック結果：対応が必要な問題があります
 
-              以下のエラーが検出されました。対応が必要です：
+              以下の項目について修正が必要です：
 
               ${errorMatches.map(error => `- ${error}`).join('\n')}
 
-              セキュリティとベストプラクティスに関するこれらのエラーを解決するため、インフラストラクチャコードを見直し、修正してください。`;
+              上記の問題点について、セキュリティとベストプラクティスの観点から修正してください。`;
             }
 
             if (warningMatches) {
-              const warningSection = `### cdk-nag テスト警告 ⚠️
+              const warningSection = `### ⚠️ セキュリティチェック結果：確認推奨事項
 
-              以下の警告が検出されました：
+              以下の項目について、確認をお願いします：
 
               ${warningMatches.map(warning => `- ${warning}`).join('\n')}
 
-              これらの警告は、インフラストラクチャコードの改善点を示唆しています。`;
+              これらの警告は必ずしも修正が必要というわけではありませんが、
+              より安全なインフラ構築のため、可能な範囲での対応を検討してください。`;
 
               commentBody = commentBody
                 ? `${commentBody}\n\n${warningSection}`
@@ -77,9 +73,9 @@ jobs:
             }
 
             if (!errorMatches && !warningMatches) {
-              commentBody = `### cdk-nag テスト成功 ✅
+              commentBody = `### ✅ セキュリティチェック結果：問題なし
 
-              すべてのcdk-nagテストが正常に完了しました。セキュリティやベストプラクティスに関する警告は見つかりませんでした。`;
+              セキュリティチェックが完了し、問題は検出されませんでした。
             }
 
             github.rest.issues.createComment({
