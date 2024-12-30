@@ -4,10 +4,12 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+
 permissions:
   contents: read
-  pull-requests: write
   issues: write
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -33,8 +35,7 @@ jobs:
         echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
         exit $exit_code
 
-    - name: Create GitHub Comment on Test Failure
-      if: steps.run-tests.outputs.exit_code != 0
+    - name: Create GitHub Comment
       uses: actions/github-script@v6
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
@@ -47,22 +48,27 @@ jobs:
           // エラーメッセージを抽出
           const errorMatches = testOutput.match(/\[error at .+?\] .+?(?=\n|$)/g);
 
+          let commentBody;
           if (errorMatches) {
-            const commentBody = `### CDK Nag Test Failures
+            commentBody = `### CDK Nag Test Failures
 
             The CDK Nag test has identified the following issues that need to be addressed:
 
             ${errorMatches.map(error => `- ${error}`).join('\n')}
 
             Please review and update your infrastructure code to resolve these security and best practice warnings.`;
+          } else {
+                commentBody = `### CDK Nag Test Successful ✅
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: commentBody
-            });
+            All CDK Nag tests have passed successfully. No security or best practice warnings were found.`;
           }
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: commentBody
+          });
 
     - name: Fail if tests failed
       if: steps.run-tests.outputs.exit_code != 0
