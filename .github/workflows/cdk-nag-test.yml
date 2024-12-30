@@ -1,4 +1,4 @@
-name: CDK Nag Test
+name: cdk-nag Test
 
 on:
   pull_request:
@@ -53,23 +53,23 @@ jobs:
 
             let commentBody;
             if (errorMatches) {
-              commentBody = `### CDK Nag Test Failures ❌
+              commentBody = `### cdk-nag テスト失敗 ❌
 
-              The CDK Nag test has identified the following errors that need to be addressed:
+              以下のエラーが検出されました。対応が必要です：
 
               ${errorMatches.map(error => `- ${error}`).join('\n')}
 
-              Please review and update your infrastructure code to resolve these security and best practice errors.`;
+              セキュリティとベストプラクティスに関するこれらのエラーを解決するため、インフラストラクチャコードを見直し、修正してください。`;
             }
 
             if (warningMatches) {
-              const warningSection = `### CDK Nag Test Warnings ⚠️
+              const warningSection = `### cdk-nag テスト警告 ⚠️
 
-              The CDK Nag test has identified the following warnings:
+              以下の警告が検出されました：
 
               ${warningMatches.map(warning => `- ${warning}`).join('\n')}
 
-              These warnings suggest potential improvements in your infrastructure code.`;
+              これらの警告は、インフラストラクチャコードの改善点を示唆しています。`;
 
               commentBody = commentBody
                 ? `${commentBody}\n\n${warningSection}`
@@ -77,10 +77,10 @@ jobs:
             }
 
             if (!errorMatches && !warningMatches) {
-              commentBody = `### CDK Nag Test Successful ✅
+              commentBody = `### cdk-nag テスト成功 ✅
 
-              All CDK Nag tests have passed successfully. No security or best practice warnings were found.`;
-              }
+              すべてのcdk-nagテストが正常に完了しました。セキュリティやベストプラクティスに関する警告は見つかりませんでした。`;
+            }
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
