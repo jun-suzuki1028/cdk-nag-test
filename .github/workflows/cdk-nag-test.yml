@@ -75,7 +75,7 @@ jobs:
             if (!errorMatches && !warningMatches) {
               commentBody = `### ✅ セキュリティチェック結果：問題なし
 
-              セキュリティチェックが完了し、問題は検出されませんでした。
+              セキュリティチェックが完了し、問題は検出されませんでした。`;
             }
 
             github.rest.issues.createComment({
