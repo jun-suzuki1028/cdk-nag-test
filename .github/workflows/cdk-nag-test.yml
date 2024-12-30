@@ -2,7 +2,7 @@ name: CDK Nag Test
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,61 +15,80 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Use Node.js 20
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
-        cache: 'npm'
+      - name: Use Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run tests
-      id: run-tests
-      continue-on-error: true
-      run: |
-        npm test 2>&1 | tee test-output.log
-        exit_code=${PIPESTATUS[0]}
-        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
-        exit $exit_code
+      - name: Run tests
+        id: run-tests
+        continue-on-error: true
+        run: |
+          npm test 2>&1 | tee test-output.log
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          exit $exit_code
 
-    - name: Create GitHub Comment
-      uses: actions/github-script@v6
-      with:
-        github-token: ${{secrets.GITHUB_TOKEN}}
-        script: |
-          const fs = require('fs');
+      - name: Create GitHub Comment
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const fs = require('fs');
 
-          // テスト出力を読み取る
-          const testOutput = fs.readFileSync('test-output.log', 'utf8');
+            // テスト出力を読み取る
+            const testOutput = fs.readFileSync('test-output.log', 'utf8');
 
-          // エラーメッセージを抽出
-          const errorMatches = testOutput.match(/\[error at .+?\] .+?(?=\n|$)/g);
+            // エラーメッセージを抽出
+            const errorMatches = testOutput.match(/\[error at .+?\] .+?(?=\n|$)/g);
 
-          let commentBody;
-          if (errorMatches) {
-            commentBody = `### CDK Nag Test Failures
+            // 警告メッセージを抽出
+            const warningMatches = testOutput.match(/\[warning at .+?\] .+?(?=\n|$)/g);
 
-            The CDK Nag test has identified the following issues that need to be addressed:
+            let commentBody;
+            if (errorMatches) {
+              commentBody = `### CDK Nag Test Failures ❌
 
-            ${errorMatches.map(error => `- ${error}`).join('\n')}
+              The CDK Nag test has identified the following errors that need to be addressed:
 
-            Please review and update your infrastructure code to resolve these security and best practice warnings.`;
-          } else {
-                commentBody = `### CDK Nag Test Successful ✅
+              ${errorMatches.map(error => `- ${error}`).join('\n')}
 
-            All CDK Nag tests have passed successfully. No security or best practice warnings were found.`;
-          }
+              Please review and update your infrastructure code to resolve these security and best practice errors.`;
+            }
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: commentBody
-          });
+            if (warningMatches) {
+              const warningSection = `### CDK Nag Test Warnings ⚠️
 
-    - name: Fail if tests failed
-      if: steps.run-tests.outputs.exit_code != 0
-      run: exit 1
+              The CDK Nag test has identified the following warnings:
+
+              ${warningMatches.map(warning => `- ${warning}`).join('\n')}
+
+              These warnings suggest potential improvements in your infrastructure code.`;
+
+              commentBody = commentBody
+                ? `${commentBody}\n\n${warningSection}`
+                : warningSection;
+            }
+
+            if (!errorMatches && !warningMatches) {
+              commentBody = `### CDK Nag Test Successful ✅
+
+              All CDK Nag tests have passed successfully. No security or best practice warnings were found.`;
+              }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+      - name: Fail if tests failed
+        if: steps.run-tests.outputs.exit_code != 0
+        run: exit 1
