@@ -46,7 +46,7 @@ jobs:
           script: |
             const issues = `${{ steps.parse-nag-report.outputs.issues }}`;
 
-            const commentBody = `### :warning: CDK Nag Compliance Issues Detected
+            const commentBody = `### :warning: CDK Nag Compliance Issues Detected test
 
             The following CDK Nag compliance issues were found:
 
