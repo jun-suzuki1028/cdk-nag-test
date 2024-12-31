@@ -1,26 +1,90 @@
-name: CDK Nag Test
+name: cdk-nag Test
 
 on:
-  push:
-    branches: [ main ]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Use Node.js 20
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
-        cache: 'npm'
+      - name: Use Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run tests
-      run: npm test
+      - name: Run tests
+        id: run-tests
+        continue-on-error: true
+        run: |
+          npm test 2>&1 | tee test-output.log
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          exit $exit_code
 
+      - name: Create GitHub Comment
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const fs = require('fs');
+
+            const testOutput = fs.readFileSync('test-output.log', 'utf8');
+            const errorMatches = testOutput.match(/\[error at .+?\] .+?(?=\n|$)/g);
+            const warningMatches = testOutput.match(/\[warning at .+?\] .+?(?=\n|$)/g);
+
+            let commentBody;
+            if (errorMatches) {
+              commentBody = `### 🚫 cdk-nag セキュリティチェック結果：対応が必要な問題があります
+
+              以下の項目について修正が必要です：
+
+              ${errorMatches.map(error => `- ${error}`).join('\n')}
+
+              上記の問題点について、セキュリティとベストプラクティスの観点から修正してください。`;
+            }
+
+            if (warningMatches) {
+              const warningSection = `### ⚠️ cdk-nag セキュリティチェック結果：確認推奨事項
+
+              以下の項目について、確認してください：
+
+              ${warningMatches.map(warning => `- ${warning}`).join('\n')}
+
+              これらの警告は必ずしも修正が必要というわけではありませんが、
+              より安全なインフラ構築のため、可能な範囲での対応を検討してください。`;
+
+              commentBody = commentBody
+                ? `${commentBody}\n\n${warningSection}`
+                : warningSection;
+            }
+
+            if (!errorMatches && !warningMatches) {
+              commentBody = `### ✅ cdk-nag セキュリティチェック結果：問題なし
+
+              セキュリティチェックが完了し、問題は検出されませんでした。`;
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+      - name: Fail if tests failed
+        if: steps.run-tests.outputs.exit_code != 0
+        run: exit 1
