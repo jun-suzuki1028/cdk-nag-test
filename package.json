@@ -8,6 +8,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
+    "test:cdk-nag": "jest test/cdk-nag",
+    "test:snap": "jest test/snapshot",
     "cdk": "cdk"
   },
   "devDependencies": {

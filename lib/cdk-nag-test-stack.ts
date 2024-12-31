@@ -12,7 +12,7 @@ export class CdkNagTestStack extends cdk.Stack {
     // });
 
     const vpc = new ec2.Vpc(this, "Vpc", {
-      maxAzs: 2,
+      maxAzs: 3,
     });
 
     // const networkAcl = new ec2.NetworkAcl(this, "NetworkAcl", {
